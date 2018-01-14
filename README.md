@@ -6,3 +6,5 @@
 - [Delta VaR calculation](option_strategies/options_delta_var.ipynb)
 - [Butterfly portfolios](option_strategies/options_butterfly.ipynb)
 - [Straddle and spread portfolios](option_strategies/options_straddle_spread.ipynb)
+## Portfolio allocation
+- [Asset allocation](portfolio_allocation/asset_allocation.ipynb) using classic risk-return paradigm
