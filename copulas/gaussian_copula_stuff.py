@@ -142,7 +142,7 @@ class MultiVarDistribution:
 
         # compute copula marginal CDF
         se = pd.Series(np.array(self.cop.marg_cdf(u)), index=x.index)
-        trg = ', '.join(self.cop.targets)
+        trg = ', '.join(x.columns)
         se.name = 'Marginal CDF of "{0}"'.format(trg)
         return se
 
@@ -249,7 +249,7 @@ class GaussianCopula:
         """
         targets = list(u.columns)
         x = self.make_input(u)
-        if len(self.targets) <= 1:
+        if len(targets) <= 1:
             # standard univariate normal
             res = ss.norm.cdf(x)
             res = pd.Series(res[:, 0], index=u.iloc[:, 0])
@@ -263,7 +263,7 @@ class GaussianCopula:
                 cv = np.array(self.cr.loc[targets, targets])
                 res[i] = mvnormcdf(xl, ml, cv)
             res = pd.Series(res, index=range(u.shape[0]))
-        res.name = 'Cond CDF of ' + ', '.join(self.targets)
+        res.name = 'Cond CDF of ' + ', '.join(targets)
         return res
 
     def probability(self, event_func, n_obs=100000):
@@ -283,18 +283,19 @@ class GaussianCopula:
         u is DataFrame n_obs x targets
         u_cond is DataFrame 1 x conditionals
         """
+        uu = u.values[:, 0]
         self.fit_cond(targets=u.columns, conditionals=u_cond.columns)
         x, x_cond, mn = self.make_input(u, u_cond)
         if len(self.targets) <= 1:
             res = ss.norm.pdf(x, mn.iloc[0], self.cond_cov.iloc[0, 0] ** 0.5)
             fx = ss.norm.pdf(x)
-            res = pd.Series((res / fx)[:, 0], index=u.iloc[:, 0])
+            res = pd.Series((res / fx)[:, 0], index=uu)
         else:
             res = ss.multivariate_normal.pdf(x, mean=np.array(mn)[0],
                                              cov=self.cond_cov)
             fx = ss.norm.pdf(x).prod(axis=1)
             res = pd.Series(res / fx, index=range(x.shape[0]))
-        res.name = 'Cond PDF of ' + ', '.join(self.targets)
+        res.name = 'Cond PDF of ' + ', '.join(self.targets.astype('str'))
         return res
 
     def cond_cdf(self, u, u_cond):
@@ -302,12 +303,13 @@ class GaussianCopula:
         u is DataFrame n_obs x targets
         u_cond is DataFrame 1 x conditionals
         """
+        uu = u.values[:, 0]
         self.fit_cond(targets=u.columns, conditionals=u_cond.columns)
         x, x_cond, mn = self.make_input(u, u_cond)
         if len(self.targets) <= 1:
             # univariate normal
             res = ss.norm.cdf(x, mn.iloc[0], self.cond_cov.iloc[0, 0] ** 0.5)
-            res = pd.Series(res[:, 0], index=u.iloc[:, 0])
+            res = pd.Series(res[:, 0], index=uu)
             #  res = pd.Series(res, index=u[:, 0])
         else:
             # mvnormcdf does not accept multiple input points
@@ -318,7 +320,7 @@ class GaussianCopula:
                 cv = np.array(self.cond_cov)
                 res[i] = mvnormcdf(xl, ml, cv)
             res = pd.Series(res, index=range(u.shape[0]))
-        res.name = 'Cond CDF of ' + ', '.join(self.targets)
+        res.name = 'Cond CDF of ' + ', '.join(self.targets.astype('str'))
         return res
 
     def fit_cond(self, targets=None, conditionals=None):
@@ -349,11 +351,12 @@ class GaussianCopula:
                                      columns=targets)
         self.mupr = pd.DataFrame(pr.T, index=targets, columns=conditionals)
 
-    def make_input(self, u, u_cond=None):
+    def make_input(self, uu, u_cond=None):
         """
         data preparation for conditional functions
         u and u_cond are DataFrames, Series, or arrays !!!
         """
+        u = uu.copy()
         if u.ndim == 1:
             u = pd.DataFrame(u).T
         if (u_cond is not None):
